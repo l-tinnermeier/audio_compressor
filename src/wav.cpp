@@ -16,6 +16,9 @@ using namespace std;
   using std::vector;
   using std::streamsize;
 
+  using std::uint16_t
+  using std::uint32_t
+  using std::uint64_t
 // FUNCTIONS
 
 namespace audio {
