@@ -24,4 +24,5 @@ target_link_libraries(audio_compressor PRIVATE
   ftxui::screen
   ftxui::dom
   ftxui::component
+  winmm
 )

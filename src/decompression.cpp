@@ -411,16 +411,31 @@ namespace Decoding24Bit {
   // Reconstruct audio samples
   vector<double> reconstructAudio(
       const string& binaryFile,
-      const string& metadataFile,
-      size_t levels) {
+      const string& metadataFile) 
+  {
 
+    Metadata metadata = readMetadata(metadataFile);
     // Read and decompress coefficients
     vector<double> coefficients =
         decompress(binaryFile, metadataFile);
 
-    // Apply inverse Haar DWT
-    vector<double> reconstructed =
-        inverseHaar(coefficients, levels);
+  // Apply the correct inverse wavelet transform
+  vector<double> reconstructed;
+
+    if (metadata.wavelet == "haar") {
+      reconstructed = dwt::haarDecode(coefficients, metadata.levels);
+  }
+    else if (metadata.wavelet == "d4_db2") {
+      reconstructed = dwt::daubechies4DecodeLevels(coefficients, metadata.levels);
+  }
+    else {
+      throw runtime_error("Unsupported wavelet type");
+
+  } if (metadata.originalSampleCount > reconstructed.size()) {
+      throw runtime_error("Original sample count exceeds reconstructed size");
+    }
+
+    reconstructed.resize(metadata.originalSampleCount);
 
     return reconstructed;
   }
@@ -490,24 +505,22 @@ namespace Decoding24Bit {
     }
   }
 
-  // Complete decompression process
-  void runDecompression(
-      const string& binaryFile,
-      const string& metadataFile,
-      const string& outputFile,
-      size_t levels,
-      uint32_t sampleRate) {
+// Complete decompression process
+void runDecompression(
+    const string& binaryFile,
+    const string& metadataFile,
+    const string& outputFile) {
 
     // Reconstruct audio samples
     vector<double> reconstructed =
-        reconstructAudio(binaryFile, metadataFile, levels);
+        reconstructAudio(binaryFile, metadataFile);
+
+    Metadata metadata = readMetadata(metadataFile);
 
     // Save reconstructed WAV file
-    saveWav(reconstructed, outputFile, sampleRate);
+    saveWav(reconstructed, outputFile, metadata.sampleRate);
 
-    cout << "Decompression complete!" << endl;
-    cout << "Output file: " << outputFile << endl;
-  }
+     }
 
 }
 

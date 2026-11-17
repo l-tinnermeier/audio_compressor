@@ -22,4 +22,14 @@ namespace Decoding24Bit {
   };
   void saveWav(const std::vector<double>& samples, const std::string& filename, std::uint32_t sampleRate);
   double calculateSNR(const std::vector<double>& original, const std::vector<double>& reconstructed);
+
+  std::vector<double> reconstructAudio(
+      const std::string& binaryFile,
+      const std::string& metadataFile);
+
+  void runDecompression(
+      const std::string& binaryFile,
+      const std::string& metadataFile,
+      const std::string& outputFile);
+
 }
