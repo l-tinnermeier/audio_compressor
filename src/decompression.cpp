@@ -318,14 +318,7 @@ namespace Decoding24Bit {
     return 10.0 * log10(averageSignalPower / mse);
   }
 
-  // Read metadata
-  struct Metadata {
-    int F;
-    size_t coefficientCount;
-  };
-
   Metadata readMetadata(const string& filename) {
-
     ifstream file(filename);
 
     if (!file) {
@@ -339,7 +332,6 @@ namespace Decoding24Bit {
         line.rfind("F=", 0) != 0) {
       throw runtime_error("Invalid metadata F");
     }
-
     metadata.F = stoi(line.substr(2));
 
     if (metadata.F < 0 || metadata.F > 15) {
@@ -350,8 +342,37 @@ namespace Decoding24Bit {
         line.rfind("coefficientCount=", 0) != 0) {
       throw runtime_error("Invalid coefficient count");
     }
-
     metadata.coefficientCount = stoull(line.substr(17));
+
+    if (!getline(file, line) ||
+        line.rfind("originalSampleCount=", 0) != 0) {
+      throw runtime_error("Invalid original sample count");
+    }
+    metadata.originalSampleCount = stoull(line.substr(20));
+
+    if (!getline(file, line) ||
+        line.rfind("sampleRate=", 0) != 0) {
+      throw runtime_error("Invalid sample rate");
+    }
+    metadata.sampleRate = stoul(line.substr(11));
+
+    if (!getline(file, line) ||
+        line.rfind("bitDepth=", 0) != 0) {
+      throw runtime_error("Invalid bit depth");
+    }
+    metadata.bitDepth = stoul(line.substr(9));
+
+    if (!getline(file, line) ||
+        line.rfind("wavelet=", 0) != 0) {
+      throw runtime_error("Invalid wavelet type");
+    }
+    metadata.wavelet = line.substr(8);
+
+    if (!getline(file, line) ||
+        line.rfind("levels=", 0) != 0) {
+      throw runtime_error("Invalid wavelet levels");
+    }
+    metadata.levels = stoul(line.substr(7));
 
     return metadata;
   }

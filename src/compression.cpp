@@ -135,7 +135,6 @@ namespace dwt {
 
 // Part 3
 namespace Encoding24Bit {
-  const int F = 8;
 
   // Convert to 16-bit integer
   std::vector<int16_t> quantize(
@@ -221,17 +220,27 @@ namespace Encoding24Bit {
     }
   }
   
-  void saveMetadata(
-        size_t coefficientCount, const string& filename){
-      
+ void saveMetadata(
+    size_t coefficientCount,
+    size_t originalSampleCount,
+    uint32_t sampleRate,
+    uint16_t bitDepth,
+    const string& wavelet,
+    unsigned int levels,
+    const string& filename) {      
       ofstream file(filename);
 
       if(!file){
         throw runtime_error("Could not open metadata file");
       }
     
-      file << "F=" << F << '\n';
-      file << "coefficientCount=" << coefficientCount << '\n';
+file << "F=" << F << '\n';
+file << "coefficientCount=" << coefficientCount << '\n';
+file << "originalSampleCount=" << originalSampleCount << '\n';
+file << "sampleRate=" << sampleRate << '\n';
+file << "bitDepth=" << bitDepth << '\n';
+file << "wavelet=" << wavelet << '\n';
+file << "levels=" << levels << '\n';
 
       if(!file){
         throw runtime_error("Error writing metadata");
