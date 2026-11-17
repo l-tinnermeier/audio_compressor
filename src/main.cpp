@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <iomanip>
 
 using namespace std;
   using std::string;
@@ -54,7 +55,7 @@ int main() {
     uint16_t headerSize = static_cast<uint64_t>(fileSize) - dataSize;
 
     const auto monoBytes = audio::stereoToMono(file, dataSize, channels, bitDepth);
-
+    audio::saveMonoWav("samples/reference_mono.wav", monoBytes, sampleRate, bitDepth);
 
     cout << "Sample rate: " << sampleRate << " Hz" << endl;
     cout << "Channels: " << channels << endl;
@@ -97,6 +98,13 @@ int main() {
     cout << "Duration: " << durationSeconds << " seconds" << endl;
     cout << "Audio data size: " << monoBytes.size() << " bytes" << endl << endl;
 
+    ofstream results("results.csv");
+    if (!results) { throw runtime_error("Could not create results.csv"); }
+    results << setprecision(17);
+    results
+      << "reference,wavelet,levels,threshold,zero_percent,mse,max_error,snr_db,"
+      << "sample_rate,bit_depth,original_sample_count,padded_sample_count,"
+      << "padding_samples,extension,coefficient_order,subband_sizes\n";
 
     // Haar experiment
     cout << "=== Haar ===" << endl;
@@ -130,6 +138,16 @@ int main() {
         bandSize *= 2;
       }
 
+
+      string coefficientOrder = "A" + to_string(levels);
+      size_t size = coefficients.size() / multiple;
+      string subbandSizes = to_string(size);
+      for (unsigned int level = levels; level > 0; level--) {
+          coefficientOrder += ";D" + to_string(level);
+          subbandSizes += ";" + to_string(size);
+          size *= 2;
+      }
+
       for (double threshold : {0.0, 0.001, 0.005, 0.01}) {
         auto thresholded = coefficients;
         dwt::hardThreshold(thresholded, threshold);
@@ -140,6 +158,8 @@ int main() {
         auto restored = dwt::haarDecode(thresholded, levels);
         restored.resize(referenceSamples.size());
 
+        const double snr = Decoding24Bit::calculateSNR(referenceSamples, restored);
+        cout << "SNR: " << snr << " dB" << endl;
 
         const std::filesystem::path directory = std::filesystem::path("samples") / ("haar_L" + to_string(levels));
         std::filesystem::create_directories(directory);
@@ -160,7 +180,22 @@ int main() {
         const double zeroPercent = 100.0 * static_cast<double>(zeros) / thresholded.size();
 
         cout << " T =" << threshold << ", zeroes = " << zeroPercent << "%" << ", MSE: " << mse << ", Max Error: " << maxErr << endl;
-
+        results
+          << "samples/reference_mono.wav,haar,"
+          << levels << ','
+          << threshold << ','
+          << zeroPercent << ','
+          << mse << ','
+          << maxErr << ','
+          << snr << ','
+          << sampleRate << ','
+          << bitDepth << ','
+          << referenceSamples.size() << ','
+          << coefficients.size() << ','
+          << padding << ','
+          << "zero_pad_end,"
+          << coefficientOrder << ','
+          << subbandSizes << '\n';
       }
     }
 
@@ -181,7 +216,7 @@ int main() {
       cout << "Original samples: " << referenceSamples.size() << endl;
       cout << "Padding samples: " << padding << endl;
       cout << "Coefficient count: " << coefficients.size() << endl;
-      cout << "Extension: zero padding at the end" << endl;
+      cout << "Extension: zero padding input with periodic wrapping at each D4 level" << endl;
 
       size_t bandSize = coefficients.size() / multiple;
       size_t offset = 0;
@@ -197,6 +232,15 @@ int main() {
         bandSize *= 2;
       }
 
+      string coefficientOrder = "A" + to_string(levels);
+      size_t size = coefficients.size() / multiple;
+      string subbandSizes = to_string(size);
+      for (unsigned int level = levels; level > 0; level--) {
+          coefficientOrder += ";D" + to_string(level);
+          subbandSizes += ";" + to_string(size);
+          size *= 2;
+      }
+
       for (double threshold : {0.0, 0.001, 0.005, 0.01}) {
         auto thresholded = coefficients;
         dwt::hardThreshold(thresholded, threshold);
@@ -207,6 +251,8 @@ int main() {
         auto restored = dwt::daubechies4DecodeLevels(thresholded, levels);
         restored.resize(referenceSamples.size());
 
+        const double snr = Decoding24Bit::calculateSNR(referenceSamples, restored);
+        cout << "SNR: " << snr << " dB" << endl;
 
         const std::filesystem::path directory = std::filesystem::path("samples") / ("d4_L" + to_string(levels));
         std::filesystem::create_directories(directory);
@@ -228,10 +274,28 @@ int main() {
 
         cout << " T =" << threshold << ", zeroes = " << zeroPercent << "%" << ", MSE: " << mse << ", Max Error: " << maxErr << endl;
 
+        results
+          << "samples/reference_mono.wav,d4_db2,"
+          << levels << ','
+          << threshold << ','
+          << zeroPercent << ','
+          << mse << ','
+          << maxErr << ','
+          << snr << ','
+          << sampleRate << ','
+          << bitDepth << ','
+          << referenceSamples.size() << ','
+          << coefficients.size() << ','
+          << padding << ','
+          << "zero_pad_end_then_periodic_each_level,"
+          << coefficientOrder << ','
+          << subbandSizes << '\n';
       }
     }
 
 
+    results.close();
+    if (!results) { throw runtime_error("Failed to finish writing results.csv"); }
 
   } catch(const exception &e) {
     cerr << e.what() << endl;
