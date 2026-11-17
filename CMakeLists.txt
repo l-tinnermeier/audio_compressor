@@ -4,6 +4,7 @@ project(AudioCompressor LANGUAGES CXX)
 
 add_executable(audio_compressor
                src/main.cpp
+               src/tui.cpp
                src/wav.cpp
                src/compression.cpp
                src/decompression.cpp)
@@ -16,3 +17,11 @@ set_target_properties(audio_compressor PROPERTIES CXX_EXTENSIONS OFF)
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   target_compile_options(audio_compressor PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+add_subdirectory(external/ftxui)
+
+target_link_libraries(audio_compressor PRIVATE
+  ftxui::screen
+  ftxui::dom
+  ftxui::component
+)

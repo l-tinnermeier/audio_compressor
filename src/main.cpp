@@ -21,7 +21,12 @@ using namespace std;
   using std::vector;
   using std::streamsize;
 
+  void runTUI();
+
 int main() {
+
+  runTUI();
+
   string filename;
   cout << "Enter WAV path: ";
   getline(cin, filename);
