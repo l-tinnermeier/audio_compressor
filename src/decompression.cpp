@@ -50,7 +50,7 @@ namespace dwt {
   vector<double> daubechies4Decode(vector<pair<double, double>>& coefficients) {
     if (coefficients.empty()) { throw invalid_argument("D4 coefficients must not be empty"); }
 
-    const size_t half = coefficients.size() / 2;
+    const size_t half = coefficients.size();
     const double sqrt3 = sqrt(3.0);
     const double scale = 1.0 / (4.0 * sqrt(2.0));
 
@@ -75,8 +75,8 @@ namespace dwt {
       result[2 * next + 1] += e * approx;
 
       // reverse detail
-      result[2 * prev] += e * detail;
-      result[2 * prev + 1] += -c * detail;
+      result[2 * previous] += e * detail;
+      result[2 * previous + 1] += -c * detail;
       result[2 * i] += b * detail;
       result[2 * i + 1] += -a * detail;
 
@@ -293,14 +293,7 @@ namespace Decoding24Bit {
     return 10.0 * log10(averageSignalPower / mse);
   }
 
-  // Read metadata
-  struct Metadata {
-    int F;
-    size_t coefficientCount;
-  };
-
   Metadata readMetadata(const string& filename) {
-
     ifstream file(filename);
 
     if (!file) {
@@ -314,7 +307,6 @@ namespace Decoding24Bit {
         line.rfind("F=", 0) != 0) {
       throw runtime_error("Invalid metadata F");
     }
-
     metadata.F = stoi(line.substr(2));
 
     if (metadata.F < 0 || metadata.F > 15) {
@@ -325,8 +317,37 @@ namespace Decoding24Bit {
         line.rfind("coefficientCount=", 0) != 0) {
       throw runtime_error("Invalid coefficient count");
     }
-
     metadata.coefficientCount = stoull(line.substr(17));
+
+    if (!getline(file, line) ||
+        line.rfind("originalSampleCount=", 0) != 0) {
+      throw runtime_error("Invalid original sample count");
+    }
+    metadata.originalSampleCount = stoull(line.substr(20));
+
+    if (!getline(file, line) ||
+        line.rfind("sampleRate=", 0) != 0) {
+      throw runtime_error("Invalid sample rate");
+    }
+    metadata.sampleRate = stoul(line.substr(11));
+
+    if (!getline(file, line) ||
+        line.rfind("bitDepth=", 0) != 0) {
+      throw runtime_error("Invalid bit depth");
+    }
+    metadata.bitDepth = stoul(line.substr(9));
+
+    if (!getline(file, line) ||
+        line.rfind("wavelet=", 0) != 0) {
+      throw runtime_error("Invalid wavelet type");
+    }
+    metadata.wavelet = line.substr(8);
+
+    if (!getline(file, line) ||
+        line.rfind("levels=", 0) != 0) {
+      throw runtime_error("Invalid wavelet levels");
+    }
+    metadata.levels = stoul(line.substr(7));
 
     return metadata;
   }
