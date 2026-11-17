@@ -60,7 +60,7 @@ namespace dwt {
 
   // Daubechies apparently uses a set of pre-defined coefficients to quantize data
   //    This inplementation, D4, uses [1 + sqrt(3), 3 + sqrt(3), 3 - sqrt(3), 1 - sqrt(3)] / 4
-  vector<pair<double, double>> daubechies4Encode(vector<double>& input) {
+  vector<pair<double, double>> daubechies4Encode(const vector<double>& input) {
     if (input.size() < 2 || input.size() % 2 != 0) {
       throw invalid_argument("Input must contain a positive, even number of samples");
     }
@@ -95,6 +95,32 @@ namespace dwt {
       result[i] = {approx, detail};
     }
     return result;
+  }
+
+  vector<double> daubechies4EncodeLevels(vector<double> input, unsigned int levels) {
+    size_t active = input.size();
+
+    for (unsigned int level = 0; level < levels; level++) {
+      if (active < 2 || active % 2 != 0) { throw invalid_argument("Invalid length argument"); }
+      active /= 2;
+    }
+
+    active = input.size();
+
+    for (unsigned int level = 0; level < levels; level++) {
+      vector<double> approx(input.begin(), input.begin() + active);
+      const auto pairs = daubechies4Encode(approx);
+      const size_t half = pairs.size();
+
+      for (size_t i = 0; i < half; i++) {
+        input[i] = pairs[i].first;
+        input[half + i] = pairs[i].second;
+      }
+
+      active = half;
+    }
+
+    return input;
   }
 
   void hardThreshold(vector<double>& coefficients, double threshold) {

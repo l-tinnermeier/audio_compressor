@@ -5,6 +5,7 @@
 namespace dwt {
   std::vector<double> haarDecode(std::vector<double> coefficients, unsigned int levels);
   std::vector<double> daubechies4Decode(const std::vector<std::pair<double, double>>& coefficients);
+  std::vector<double> daubechies4DecodeLevels(std::vector<double> coefficients, unsigned int levels);
 }
 
 namespace Decoding24Bit {

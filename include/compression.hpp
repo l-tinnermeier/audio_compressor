@@ -3,8 +3,9 @@
 
 namespace dwt {
   std::vector<double> haarEncode(std::vector<double>& input, std::uint16_t levels);
-  std::vector<std::pair<double, double>> daubechies4Encode(std::vector<double>& input);
-  void hardThreshold(std::vector<double>& coefficients, double threshold); 
+  std::vector<std::pair<double, double>> daubechies4Encode(const std::vector<double>& input);
+  std::vector<double> daubechies4EncodeLevels(std::vector<double> input, unsigned int levels);
+  void hardThreshold(std::vector<double>& coefficients, double threshold);
 }
 
 

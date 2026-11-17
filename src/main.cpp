@@ -163,6 +163,76 @@ int main() {
 
       }
     }
+
+
+    // Haar experiment
+    cout << "=== Daubechies ===" << endl;
+ 
+    for (unsigned int levels : {1u, 3u, 5u}) {
+      auto workingSamples = referenceSamples;
+
+      const size_t multiple = size_t{1} << levels;
+      size_t padding = (multiple - workingSamples.size() % multiple) % multiple;
+      workingSamples.resize(workingSamples.size() + padding, 0.0);
+
+      const auto coefficients = dwt::daubechies4EncodeLevels(workingSamples, levels);
+
+      cout << "Levels: " << levels << " level(s) ===" << endl;
+      cout << "Original samples: " << referenceSamples.size() << endl;
+      cout << "Padding samples: " << padding << endl;
+      cout << "Coefficient count: " << coefficients.size() << endl;
+      cout << "Extension: zero padding at the end" << endl;
+
+      size_t bandSize = coefficients.size() / multiple;
+      size_t offset = 0;
+
+      cout << " ==Subbands (offset, size)==" << endl;
+      cout << " A" << levels << ": " << offset << ", " << bandSize << endl;
+
+      offset += bandSize;
+
+      for (unsigned int level = levels; level > 0; level--) {
+        cout << " D" << level << ": " << offset << ", " << bandSize << endl;
+        offset += bandSize;
+        bandSize *= 2;
+      }
+
+      for (double threshold : {0.0, 0.001, 0.005, 0.01}) {
+        auto thresholded = coefficients;
+        dwt::hardThreshold(thresholded, threshold);
+
+        size_t zeros = 0;
+        for (double c : thresholded) { if (c == 0.0) zeros++; }
+
+        auto restored = dwt::daubechies4DecodeLevels(thresholded, levels);
+        restored.resize(referenceSamples.size());
+
+
+        const std::filesystem::path directory = std::filesystem::path("samples") / ("d4_L" + to_string(levels));
+        std::filesystem::create_directories(directory);
+        const auto outputPath = directory / ("T" + to_string(threshold) + ".wav");
+        Decoding24Bit::saveWav(restored, outputPath.string(), sampleRate);
+        cout << "Saved " << outputPath.string() << endl;
+        
+        double squaredErr = 0.0;
+        double maxErr = 0.0;
+
+        for (size_t i = 0; i < referenceSamples.size(); i++) { 
+          const double difference = referenceSamples[i] - restored[i]; 
+          squaredErr += difference * difference;
+          maxErr = max(maxErr, abs(difference));
+        }
+
+        const double mse = squaredErr / referenceSamples.size();
+        const double zeroPercent = 100.0 * static_cast<double>(zeros) / thresholded.size();
+
+        cout << " T =" << threshold << ", zeroes = " << zeroPercent << "%" << ", MSE: " << mse << ", Max Error: " << maxErr << endl;
+
+      }
+    }
+
+
+
   } catch(const exception &e) {
     cerr << e.what() << endl;
     return 1;

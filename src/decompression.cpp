@@ -47,10 +47,10 @@ namespace dwt {
     return coefficients;
   }
 
-  vector<double> daubechies4Decode(vector<pair<double, double>>& coefficients) {
+  vector<double> daubechies4Decode(const vector<pair<double, double>>& coefficients) {
     if (coefficients.empty()) { throw invalid_argument("D4 coefficients must not be empty"); }
 
-    const size_t half = coefficients.size() / 2;
+    const size_t half = coefficients.size();
     const double sqrt3 = sqrt(3.0);
     const double scale = 1.0 / (4.0 * sqrt(2.0));
 
@@ -75,13 +75,38 @@ namespace dwt {
       result[2 * next + 1] += e * approx;
 
       // reverse detail
-      result[2 * prev] += e * detail;
-      result[2 * prev + 1] += -c * detail;
+      result[2 * previous] += e * detail;
+      result[2 * previous + 1] += -c * detail;
       result[2 * i] += b * detail;
       result[2 * i + 1] += -a * detail;
 
     }
     return result;
+  }
+
+  vector<double> daubechies4DecodeLevels(vector<double> coefficients, unsigned int levels) {
+    size_t active = coefficients.size();
+
+    
+    for (unsigned int level = 0; level < levels; ++level) {
+        if (active < 2 || active % 2 != 0) { throw invalid_argument("Invalid length for D4 levels"); }
+        active /= 2;
+    }
+
+    for (unsigned int level = 0; level < levels; level++) {
+      vector<pair<double, double>> pairs(active);
+
+      for (size_t i = 0; i < active; i++) {
+        pairs[i] = { coefficients[i], coefficients[active + i] };
+      }
+
+      const auto restored = daubechies4Decode(pairs);
+      for (size_t i = 0; i < restored.size(); i++) { coefficients[i] = restored[i]; }
+      
+      active *= 2;
+    }
+
+    return coefficients;
   }
 }
 

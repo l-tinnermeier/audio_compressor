@@ -239,7 +239,7 @@ vector<double> decodeMonoPCM(const vector<unsigned char>& bytes, unsigned int bi
       const unsigned int bits = static_cast<unsigned int>(bytes[i]) | (static_cast<unsigned int>(bytes[i + 1]) << 8);
 
       // Interpret the result as a signed, 16-bit value
-      const int value = bits >= 32768 ? static_cast<int>(bits) - 65535 : static_cast<int>(bits);
+      const int value = bits >= 32768 ? static_cast<int>(bits) - 65536 : static_cast<int>(bits);
 
       samples.push_back(value / 32768.0);
     }
