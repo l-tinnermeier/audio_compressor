@@ -29,6 +29,9 @@ namespace audio {
   std::uint64_t calculateByteRate(std::uint32_t rate,
                                   std::uint16_t channels,
                                   std::uint16_t bitDepth);
+
+  std::vector<double> decodeMonoPCM(const std::vector<unsigned char>& bytes,
+                                    unsigned int bitDepth);
 } // namespace audio
 
 #endif

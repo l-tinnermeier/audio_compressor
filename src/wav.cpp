@@ -1,3 +1,5 @@
+#include "wav.hpp"
+
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -15,11 +17,17 @@ using namespace std;
   using std::streamoff;
   using std::vector;
   using std::streamsize;
+  using std::pair;
 
-  using std::uint16_t
-  using std::uint32_t
-  using std::uint64_t
+  using std::uint16_t;
+  using std::uint32_t;
+  using std::uint64_t;
+
 // FUNCTIONS
+namespace {
+  void writeLE16(std::ostream& out, std::uint16_t value);
+  void writeLE32(std::ostream& out, std::uint32_t value);
+}
 
 namespace audio {
 
@@ -209,6 +217,35 @@ void saveMonoWav(const string& filename, const vector<unsigned char>& monoData, 
 
   out.close();
   if (!out) { throw runtime_error("Failed to save .WAV file"); }
+}
+
+
+vector<double> decodeMonoPCM(const vector<unsigned char>& bytes, unsigned int bitDepth) {
+  if (bitDepth != 8 && bitDepth != 16) { throw invalid_argument("Expected 8 or 16-bit PCM"); }
+
+  size_t bytesPerSample = bitDepth / 8;
+
+  if (bytes.size() % bytesPerSample != 0) { throw invalid_argument("Incomplete PCM sample"); }
+  
+  vector<double> samples;
+  samples.reserve(bytes.size() / bytesPerSample);
+
+  for (size_t i = 0; i < bytes.size(); i+= bytesPerSample) {
+    if (bitDepth == 8) {
+      // Unsigned PCM: 128 represents silence
+      samples.push_back((static_cast<int>(bytes[i]) - 128) / 128.0);
+    } else {
+      // Combine the two little-endian bytes
+      const unsigned int bits = static_cast<unsigned int>(bytes[i]) | (static_cast<unsigned int>(bytes[i + 1]) << 8);
+
+      // Interpret the result as a signed, 16-bit value
+      const int value = bits >= 32768 ? static_cast<int>(bits) - 65535 : static_cast<int>(bits);
+
+      samples.push_back(value / 32768.0);
+    }
+  }
+
+  return samples;
 }
 
 }

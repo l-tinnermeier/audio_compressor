@@ -1,3 +1,6 @@
+#include "compression.hpp"
+
+
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -8,8 +11,11 @@
 #include <string>
 #include <utility>
 
+#include <ranges>
+
 using namespace std;
   using std::vector;
+  using std::pair;
 
   using std::uint8_t;
   using std::uint16_t;
@@ -18,26 +24,84 @@ using namespace std;
   
 namespace dwt {
 
-   vector<unsigned char> rearrange(vector<unsigned char> input, uint16_t length);
+  // Little description of Haar here
+  vector<double> haarEncode(vector<double>& input, uint16_t levels) {
+    size_t active = input.size();
 
-  vector<unsigned char> haar(vector<unsigned char> input, uint16_t length, uint8_t level) {
-    while (level--) {
-      float fTemp01, fTemp02;
-      for (int i = 0; i < length; i += 2) {
-        fTemp01 = static_cast<uint32_t>(input.at(i));
-        fTemp02 = static_cast<uint32_t>(input.at(i + 1));
-        input.at(i) = (fTemp01 + fTemp02) / 1.414214f;
-        input.at(i + 1) = (fTemp01 - fTemp02) / 1.414214f;
+    for (unsigned int level = 0; level < levels; level++) {
+      if (active < 2 || active % 2 != 0) { 
+        throw invalid_argument("Input length must be divisible by 2");
       }
 
-      rearrange(input, length);
-      length /= 2;
+      active /= 2;
+    }
+
+    vector<double> temp(input.size());
+    const double scale = 1.0 / sqrt(2.0);
+    active = input.size();
+
+    for (unsigned int level = 0; level < levels; level++) {
+      size_t half = active / 2;
+
+      for (size_t i = 0; i < half; i++) {
+        const double left = input[i * 2];
+        const double right = input[(i * 2) + 1];
+
+        temp[i] = (left + right) * scale;
+        temp[half + i] = (left - right) * scale;
+      }
+
+      for (size_t i = 0; i < active; i++) { input[i] = temp[i]; } 
+      active = half;
     }
 
     return input;
   }
 
+  // Daubechies apparently uses a set of pre-defined coefficients to quantize data
+  //    This inplementation, D4, uses [1 + sqrt(3), 3 + sqrt(3), 3 - sqrt(3), 1 - sqrt(3)] / 4
+  vector<pair<double, double>> daubechies4Encode(vector<double>& input) {
+    if (input.size() < 2 || input.size() % 2 != 0) {
+      throw invalid_argument("Input must contain a positive, even number of samples");
+    }
 
+    const size_t half = input.size() / 2;
+    const double sqrt3 = sqrt(3.0);
+    const double scale = 1.0 / (4.0 * sqrt(2.0));
+
+    const double a = (sqrt3 + 1.0) * scale;
+    const double b = (sqrt3 + 3.0) * scale;
+    const double c = (3.0 - sqrt3) * scale;
+    const double e = (1.0 - sqrt3) * scale;
+
+    vector<pair<double, double>> result(half);
+
+    for (size_t i = 0; i < half; i++) {
+      size_t next = (i + 1) % half;
+      size_t previous = (i == 0) ? half - 1 : i - 1;
+
+      const double approx = 
+        a * input[2 * i] +
+        b * input[2 * i + 1] +
+        c * input[2 * next] +
+        e * input[2 * next + 1];
+
+      const double detail = 
+        e * input[2 * previous] -
+        c * input[2 * previous + 1] +
+        b * input[2 * i] -
+        a * input[2 * i + 1];
+
+      result[i] = {approx, detail};
+    }
+    return result;
+  }
+
+  void hardThreshold(vector<double>& coefficients, double threshold) {
+    if (!isfinite(threshold) || threshold < 0) { throw invalid_argument("Threshold must be finite and non-negative"); }
+
+    for (double& c : coefficients) {if (abs(c) <= threshold) { c = 0.0; }}
+  }
 }
 
 
@@ -66,10 +130,10 @@ namespace Encoding24Bit {
       quantized.push_back(static_cast<int16_t> (q));
     }
       return quantized;
-    }
+  }
   
-    // Encode coefficients into 24-bit records
-    vector<pair<uint8_t, int16_t>> encode(
+  // Encode coefficients into 24-bit records
+  vector<pair<uint8_t, int16_t>> encode(
       const vector<int16_t>& quantized) {
       
     vector<pair<uint8_t, int16_t>> records;
@@ -130,7 +194,8 @@ namespace Encoding24Bit {
       throw runtime_error("Error writing compressed file");
     }
   }
-    void saveMetadata(
+  
+  void saveMetadata(
         size_t coefficientCount, const string& filename){
       
       ofstream file(filename);

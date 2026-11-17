@@ -1,3 +1,5 @@
+#include "decompression.hpp"
+
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -10,6 +12,78 @@
 #include <algorithm>
 
 using namespace std;
+  using std::vector;
+  using std::sqrt;
+  using std::size_t;
+  using std::invalid_argument;
+
+namespace dwt {
+  vector<double> haarDecode(vector<double> coefficients, unsigned int levels) {
+    size_t active = coefficients.size();
+
+    for (unsigned int level = 0; level < levels; level++) {
+      if (active < 2 || active % 2 != 0) { throw invalid_argument("Invalid length for given level"); }
+      active /= 2;
+    }
+
+    vector<double> temp(coefficients.size());
+    const double scale = 1.0 / sqrt(2.0);
+
+    for (unsigned int level = 0; level < levels; level++) {
+      size_t half = active;
+      active *= 2;
+
+      for (size_t i = 0; i < half; i++) {
+        const double approx = coefficients[i];
+        const double detail = coefficients[half + i];
+
+        temp[2 * i] = (approx + detail) * scale;
+        temp[2 * i + 1] = (approx - detail) * scale;
+      }
+
+      for (size_t i = 0; i < active; i++) { coefficients[i] = temp[i]; }
+    }
+
+    return coefficients;
+  }
+
+  vector<double> daubechies4Decode(vector<pair<double, double>>& coefficients) {
+    if (coefficients.empty()) { throw invalid_argument("D4 coefficients must not be empty"); }
+
+    const size_t half = coefficients.size() / 2;
+    const double sqrt3 = sqrt(3.0);
+    const double scale = 1.0 / (4.0 * sqrt(2.0));
+
+    const double a = (sqrt3 + 1.0) * scale;
+    const double b = (sqrt3 + 3.0) * scale;
+    const double c = (3.0 - sqrt3) * scale;
+    const double e = (1.0 - sqrt3) * scale;
+
+    vector<double> result(2 * half, 0.0);
+
+    for (size_t i = 0; i < half; i++) {
+      size_t next = (i + 1) % half;
+      size_t previous = (i == 0) ? half - 1 : i - 1;
+
+      const double approx = coefficients[i].first;
+      const double detail = coefficients[i].second;
+
+      // reverse approx
+      result[2 * i] += a * approx;
+      result[2 * i + 1] += b * approx;
+      result[2 * next] += c * approx;
+      result[2 * next + 1] += e * approx;
+
+      // reverse detail
+      result[2 * prev] += e * detail;
+      result[2 * prev + 1] += -c * detail;
+      result[2 * i] += b * detail;
+      result[2 * i + 1] += -a * detail;
+
+    }
+    return result;
+  }
+}
 
 // Part 4
 namespace Decoding24Bit {
