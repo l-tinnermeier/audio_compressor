@@ -135,6 +135,7 @@ void showResults(
     uint16_t bitDepth,
     uint32_t byteRate,
     uint64_t fileSize,
+    uint64_t compressedFileSize,
     uint32_t dataSize,
     uint16_t headerSize,
     size_t sampleCount,
@@ -153,6 +154,7 @@ void showResults(
     using namespace ftxui;
 
     auto screen = ScreenInteractive::Fullscreen();
+    float scrollPosition = 0.0f;
 
     auto closeButton = Button("Close", [&] {
         screen.ExitLoopClosure()();
@@ -161,6 +163,8 @@ void showResults(
     auto layout = Container::Vertical({
         closeButton
     });
+
+
 
     std::ostringstream mseFormatted;
     mseFormatted << std::scientific << std::setprecision(6) << mse;
@@ -178,7 +182,9 @@ void showResults(
             text("Original Channels: " + std::to_string(channels)),
             text("Bit Depth: " + std::to_string(bitDepth) + " bits"),
             text("Calculated Byte Rate: " + std::to_string(byteRate) + " bytes/s"),
-            text("File Size: " + std::to_string(fileSize) + " bytes"),
+            text("Original File Size: " + std::to_string(fileSize) + " bytes"),
+            text("Compressed File Size: " + std::to_string(compressedFileSize) + " bytes"),
+
             text("Data Size: " + std::to_string(dataSize) + " bytes"),
             text("Header Size: " + std::to_string(headerSize) + " bytes"),
 
@@ -242,9 +248,23 @@ void showResults(
             text("Decompression Complete!") | bold | center,
             closeButton->Render() | center
 
-        }) | border | frame;
-    });
+ }) | focusPositionRelative(0.0f, scrollPosition)
+   | vscroll_indicator | yframe | border;
+});    
 
+resultsInterface = CatchEvent(resultsInterface, [&](Event event) {
+    if (event == Event::ArrowDown) {
+        scrollPosition = std::min(1.0f, scrollPosition + 0.05f);
+        return true;
+    }
+
+    if (event == Event::ArrowUp) {
+        scrollPosition = std::max(0.0f, scrollPosition - 0.05f);
+        return true;
+    }
+
+    return false;
+});
     screen.Loop(resultsInterface);
 }
 int main() {
@@ -369,6 +389,8 @@ Decoding24Bit::saveWav(
         compressedDirectory / ("T" + to_string(threshold) + ".bin");
 
       Encoding24Bit::saveRecords(records, binaryPath.string());
+      uint64_t compressedFileSize =
+        std::filesystem::file_size(binaryPath);
 
       // Save metadata needed for decompression
       const auto metadataPath =
@@ -459,6 +481,7 @@ showResults(
     bitDepth,
     audio::calculateByteRate(sampleRate, channels, bitDepth),
     static_cast<uint64_t>(fileSize),
+    compressedFileSize,
     dataSize,
     headerSize,
     referenceSamples.size(),
@@ -566,6 +589,8 @@ results
        compressedDirectory / ("T" + to_string(threshold) + ".bin");
 
       Encoding24Bit::saveRecords(records, binaryPath.string());
+      uint64_t compressedFileSize =
+        std::filesystem::file_size(binaryPath);
       // Save metadata needed for decompression
       const auto metadataPath =
         compressedDirectory / ("T" + to_string(threshold) + ".txt");
@@ -653,6 +678,7 @@ showResults(
     bitDepth,
     audio::calculateByteRate(sampleRate, channels, bitDepth),
     static_cast<uint64_t>(fileSize),
+    compressedFileSize,
     dataSize,
     headerSize,
     referenceSamples.size(),
