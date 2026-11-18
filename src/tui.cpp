@@ -8,8 +8,6 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 
-#include<windows.h>
-#include<mmsystem.h>
 
 using namespace ftxui;
 
@@ -109,19 +107,9 @@ CompressionSettings runTUI(){
   });
 
   screen.Loop(mainInterface);
-  std::string selectedMethod =
-    wavelets[selectedWavelet] == "Haar" ? "haar" : "d4";
-
-  std::string matchingWav =
-    "samples/" + selectedMethod +
-    "_L" + levels[selectedLevel] +
-    "/T" + std::to_string(std::stod(thresholds[selectedThreshold])) + ".wav";
  
   if (wavFiles.size() == 1 && wavFiles[0] == "No WAV files found") {
     wavFiles.clear();
-}
-  if (std::filesystem::exists(matchingWav)) {
-    wavFiles.push_back(matchingWav);
 }
   screen = ScreenInteractive::Fullscreen();
   wavMenu = Radiobox(&wavFiles, &selectedWav);
