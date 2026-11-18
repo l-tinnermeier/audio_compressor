@@ -50,7 +50,7 @@ void playAudio(const std::string& path) {
         nullptr,
         SND_FILENAME | SND_ASYNC
     );
-  #elif defined(_APPLE_)
+  #elif defined(__APPLE__)
     std::string command = "afplay \"" + path + "\" &";
     std::system(command.c_str());
   #endif
@@ -59,7 +59,7 @@ void playAudio(const std::string& path) {
 void stopAudio() {
 #ifdef _WIN32
     PlaySoundA(nullptr, nullptr, 0);
-#elif defined(_APPLE_)
+#elif defined(__APPLE__)
     std::system("pkill -x afplay >/dev/null 2>&1");
 #endif
 }
@@ -252,7 +252,6 @@ int main() {
   CompressionSettings settings = runTUI();
 
   string filename = settings.wavPath;
-  std::cout << "Selected WAV file: " << filename << std::endl;
 
   if (filename.empty() || filename == "No WAV files found"){
     cerr << " No WAV file selected." << endl;
@@ -278,20 +277,22 @@ int main() {
    
     string userResponse;
 
-    if (channels == 2) { 
-      cout << "[STEREO] file detected" << endl;
-      cout << "Do you wish to save " << filename << " as [MONO]? (y/n): ";
-      getline(cin, userResponse);
+    if (channels == 2 &&
+        std::filesystem::path(filename).filename() == "sample-5mb.wav" &&
+        settings.saveMono) {
 
-      if (userResponse == "y" || userResponse == "Y") {
-        string newFileName;
-        cout << "Enter a new filename: ";
-        getline(cin, newFileName);
-
-        audio::saveMonoWav(newFileName + ".wav", monoBytes, sampleRate, bitDepth);
-      }
+    if (settings.monoFilename.empty()) {
+        throw runtime_error("Please enter a filename for the mono copy.");
     }
 
+    audio::saveMonoWav(
+        (std::filesystem::path("samples") /
+          (settings.monoFilename + ".wav")).string(),
+        monoBytes,
+        sampleRate,
+        bitDepth
+    );
+}
     const auto referenceSamples = audio::decodeMonoPCM(monoBytes, bitDepth);
 
 

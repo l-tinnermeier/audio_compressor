@@ -43,6 +43,11 @@ CompressionSettings runTUI(){
     wavFiles.push_back("No WAV files found");
   }
 
+  bool saveMono = false;
+  std::string monoFilename = "sample-5mb_mono";
+
+  auto monoCheckbox = Checkbox("Save a mono copy", &saveMono);
+  auto monoFilenameInput = Input(&monoFilename, "Enter filename");
   int selectedWav = 0;
   auto wavMenu = Radiobox(&wavFiles, &selectedWav);
 
@@ -118,20 +123,44 @@ CompressionSettings runTUI(){
        auto continueButton = Button("Continue", [&] {
         screen.ExitLoopClosure()();
     });
+    auto monoOptions = Container::Vertical({
+        monoCheckbox,
+        Maybe(monoFilenameInput, &saveMono)
+    });
+    
     auto wavContainer = Container::Vertical({
-        wavMenu, continueButton
+        wavMenu,
+        Maybe(monoOptions, [&]{
+            return std::filesystem::path(wavFiles[selectedWav])
+                       .filename() == "sample-5mb.wav";
+        }),
+        continueButton
     });
 
-    auto wavInterface = Renderer(wavContainer, [&] {
-        return vbox({
-            text("Select WAV File") | bold | center,
-            separator(),
-            wavMenu->Render(),
-            separator(),
-            continueButton->Render() | center
-        }) | border;
-    });
+   auto wavInterface = Renderer(wavContainer, [&] {
+    bool isSample5mb =
+        std::filesystem::path(wavFiles[selectedWav])
+            .filename() == "sample-5mb.wav";
 
+    return vbox({
+        text("Select WAV File") | bold | center,
+        separator(),
+        wavMenu->Render(),
+        separator(),
+
+        isSample5mb
+            ? vbox({
+                text("Stereo File Detected") | bold,
+                monoCheckbox->Render(),
+                saveMono
+                    ? monoFilenameInput->Render()
+                    : text("")
+            })
+            : text(""),
+
+        continueButton->Render() | center
+    }) | border;
+});
     screen.Loop(wavInterface);
 }
   CompressionSettings settings;
@@ -141,6 +170,8 @@ CompressionSettings runTUI(){
       settings.level = std::stoul(levels[selectedLevel]);
       settings.threshold = std::stod(thresholds[selectedThreshold]);
       settings.wavPath = wavFiles[selectedWav];
+      settings.saveMono = saveMono;
+      settings.monoFilename = monoFilename;
   }
 
   return settings;
