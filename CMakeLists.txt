@@ -24,5 +24,8 @@ target_link_libraries(audio_compressor PRIVATE
   ftxui::screen
   ftxui::dom
   ftxui::component
-  winmm
 )
+
+if(WIN32)
+  target_link_libraries(audio_compressor PRIVATE winmm)
+endif()

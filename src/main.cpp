@@ -15,8 +15,12 @@
 #include <filesystem>
 #include <iomanip>
 #include<sstream>
+#ifdef _WIN32
 #include <windows.h>
 #include <mmsystem.h>
+#else
+#include <cstdlib>
+#endif
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -40,15 +44,24 @@ using namespace std;
   using std::size_t;
 
 void playAudio(const std::string& path) {
+  #ifdef _WIN32
     PlaySoundA(
         path.c_str(),
         nullptr,
         SND_FILENAME | SND_ASYNC
     );
+  #elif defined(_APPLE_)
+    std::string command = "afplay \"" + path + "\" &";
+    std::system(command.c_str());
+  #endif
 }
 
 void stopAudio() {
+#ifdef _WIN32
     PlaySoundA(nullptr, nullptr, 0);
+#elif defined(_APPLE_)
+    std::system("pkill -x afplay >/dev/null 2>&1");
+#endif
 }
 
 void showPlayback(
